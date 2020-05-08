@@ -33,10 +33,14 @@ class List extends Component {
             blogs: null,
             modalOpen: false,
             modalTitle: '',
-            modalContent: ''
+            modalContent: '',
+            edit: false,
+            editBlog: null,
+            editIndex: null
         }
 
         this.publishToggle = this.publishToggle.bind(this);
+        this.onEditClicked = this.onEditClicked.bind(this);
     }
 
     componentDidMount() {
@@ -49,10 +53,40 @@ class List extends Component {
                     blogs.push(data)
                 })
 
+                blogs.sort(function(a,b){
+                    // Turn your strings into dates, and then subtract them
+                    // to get a value that is either negative, positive, or zero.
+                    return new Date(a.createdAt) - new Date(b.createdAt);
+                });
+
                 this.setState({
                     blogs: blogs.reverse()
                 })
             })
+    }
+
+    onModalEditPressed() {
+        let title = this.state.modalTitle;
+        let content = this.state.modalContent;
+
+        if(!title || title.length === 0 || !content || content.length === 0)
+            return;
+
+
+        let blogs = this.state.blogs;
+
+        let editBlog = this.state.editBlog;
+        editBlog.title = title;
+        editBlog.content = content;
+
+        firestore.collection('blogs').doc(editBlog.id).update(editBlog)
+            .then(ref => {
+                console.log('edited blog')
+                blogs[this.state.editIndex] = editBlog;
+                this.setState({modalOpen: false, blogs: blogs, editBlog: null, edit: false, editIndex: null})
+            }).catch(err => {
+            console.log('error when editing blog entry', err)
+        })
     }
 
     onModalSubmitPressed() {
@@ -65,6 +99,7 @@ class List extends Component {
         let newObject = {
             title: title,
             content: content,
+            published: false,
             createdAt: new Date().toISOString()
         }
 
@@ -99,11 +134,24 @@ class List extends Component {
 
     }
 
+    onEditClicked(index) {
+        let blogs = this.state.blogs;
+        let blog = blogs[index];
+
+        this.setState({
+            modalOpen: true,
+            edit: true,
+            editBlog: blog,
+            editIndex: index,
+            modalTitle: blog.title,
+            modalContent: blog.content
+        })
+    }
+
     renderBlogs() {
         let toReturn = [];
         let blogs = this.state.blogs;
 
-        let index = 0;
         for(let i=0; i<blogs.length; i++) {
             let blog = blogs[i]
             let date = moment(blog.createdAt);
@@ -111,7 +159,7 @@ class List extends Component {
             toReturn.push(
                 <tr key={i}>
                     <td style={publishStyle}><img style={{height: 30, width: 30, cursor: 'pointer'}} src={imgSrc} onClick={() => this.publishToggle(i)}/></td>
-                    <td style={titleStyle}>{blog.title}</td>
+                    <td style={titleStyle} onClick={() => this.onEditClicked(i)}>{blog.title}</td>
                     <td style={contentStyle}>{blog.content}</td>
                     <td style={imageStyle}>{blog.image}</td>
                     <td style={createdStyle}>{date.format("MM/DD/YY, h:mm:ss a")}</td>
@@ -127,7 +175,7 @@ class List extends Component {
         return (
             <div>
                 <p
-                    onClick={() => this.setState({modalOpen: false})}
+                    onClick={() => this.setState({modalOpen: false, edit: false, modalTitle: '', modalContent: ''})}
                     style={{position: 'absolute', right: 15, top: 5, cursor: 'pointer', fontSize: 26}}>
                     X
                 </p>
@@ -147,12 +195,22 @@ class List extends Component {
                     value={this.state.modalContent}
                     onChange={(e) => this.setState({modalContent: e.target.value})} />
 
-                <button
-                    onClick={this.onModalSubmitPressed.bind(this)}
-                    type="button"
-                    style={{marginTop: 20, borderWidth: 1, padding: 10, borderRadius: 5, backgroundColor: '#79CDCD', color: 'white', width: 200}}>
-                    Submit
-                </button>
+                {
+                    this.state.edit ?
+                        <button
+                            onClick={this.onModalEditPressed.bind(this)}
+                            type="button"
+                            style={{marginTop: 20, borderWidth: 1, padding: 10, borderRadius: 5, backgroundColor: '#79CDCD', color: 'white', width: 200}}>
+                            Edit
+                        </button>
+                        :
+                        <button
+                            onClick={this.onModalSubmitPressed.bind(this)}
+                            type="button"
+                            style={{marginTop: 20, borderWidth: 1, padding: 10, borderRadius: 5, backgroundColor: '#79CDCD', color: 'white', width: 200}}>
+                            Submit
+                        </button>
+                }
             </div>
         )
     }
@@ -240,6 +298,7 @@ const imageStyle = {
 
 const titleStyle = {
     width: '30%',
+    cursor: 'pointer'
 }
 
 const contentStyle = {
