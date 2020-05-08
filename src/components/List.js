@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import database from '../services/database.js'
+var moment = require('moment');
 
 let firestore = database.firestore();
 
@@ -33,13 +34,13 @@ class List extends Component {
         let blogs = this.state.blogs;
 
         blogs.forEach(blog => {
-            let date = new Date(blog.createdAt)
+            let date = moment(blog.createdAt);
             toReturn.push(
                 <tr>
                     <td style={titleStyle}>{blog.title}</td>
                     <td style={contentStyle}>{blog.content}</td>
                     <td style={imageStyle}>{blog.image}</td>
-                    <td style={createdStyle}>{date.getMonth() + 1} / {date.getDate()} / {date.getFullYear()}</td>
+                    <td style={createdStyle}>{date.format("MM/DD/YY, h:mm:ss a")}</td>
                 </tr>
             )
         })
