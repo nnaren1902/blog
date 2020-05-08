@@ -8,18 +8,12 @@ import {
   Link
 } from "react-router-dom";
 
+import List from './components/List.js'
+
 function App() {
   return (
     <Router>
       <div className="App">
-
-        <nav>
-          <div style={{display: 'flex', flexDirection: 'row', padding: 50}}>
-            <Link to="/">List</Link>
-            <Link to="/edit">Edit</Link>
-          </div>
-        </nav>
-
 
         <Switch>
           <Route path="/edit">
@@ -27,7 +21,7 @@ function App() {
           </Route>
 
           <Route path="/">
-            <Home />
+            <List />
           </Route>
         </Switch>
       </div>
@@ -35,9 +29,6 @@ function App() {
   );
 }
 
-function Home() {
-  return <h2>Home</h2>;
-}
 
 function About() {
   return <h2>About</h2>;
