@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import database from '../services/database.js'
+import {storage} from '../services/database.js'
 import Modal from 'react-modal';
+import Loader from "react-loader-spinner";
 import styles from '../styles/List.module.css'
 
 let moment = require('moment');
@@ -35,13 +37,18 @@ class List extends Component {
             modalOpen: false,
             modalTitle: '',
             modalContent: '',
+            imageAsFile: null,
             edit: false,
             editBlog: null,
-            editIndex: null
+            editIndex: null,
+            imageError: false,
+            uploading: false
         }
 
         this.publishToggle = this.publishToggle.bind(this);
         this.onEditClicked = this.onEditClicked.bind(this);
+        this.uploadBlog = this.uploadBlog.bind(this);
+        this.updateblog = this.updateblog.bind(this);
     }
 
     componentDidMount() {
@@ -73,18 +80,62 @@ class List extends Component {
         if(!title || title.length === 0 || !content || content.length === 0)
             return;
 
-
-        let blogs = this.state.blogs;
-
         let editBlog = this.state.editBlog;
         editBlog.title = title;
         editBlog.content = content;
 
+        //if image updated
+        if(this.state.imageEdited) {
+            let imageAsFile = this.state.imageAsFile;
+
+            if(!imageAsFile || imageAsFile === '' ) {
+                this.setState({imageError: true})
+                return;
+            }
+            let name = imageAsFile.name;
+            let allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif)$/i;
+
+            if (!allowedExtensions.exec(name)) {
+                console.log('invalid file type')
+                this.setState({imageError: true})
+                return false;
+            }
+
+            //upload iamge and update url
+            const self = this;
+            this.setState({uploading: true})
+            const uploadTask = storage.ref(`/images/${imageAsFile.name}`).put(imageAsFile);
+            uploadTask.on('state_changed',
+                (snapShot) => {
+                    //takes a snap shot of the process as it is happening
+                }, (err) => {
+                    //catches the errors
+                    console.log('error', err)
+                    self.setState({imageError: true})
+                }, () => {
+                    // gets the functions from storage refences the image storage in firebase by the children
+                    // gets the download url then sets the image from firebase as the value for the imgUrl key:
+                    storage.ref('images').child(imageAsFile.name).getDownloadURL()
+                        .then(fireBaseUrl => {
+                            console.log('image uploaded')
+                            editBlog.imageUrl = fireBaseUrl;
+                            editBlog.imageName = name;
+                            self.updateblog(editBlog)
+                        })
+                })
+        } else {
+            this.updateblog(editBlog)
+        }
+
+    }
+
+    updateblog(editBlog) {
+        let blogs = this.state.blogs;
         firestore.collection('blogs').doc(editBlog.id).update(editBlog)
             .then(ref => {
                 console.log('edited blog')
                 blogs[this.state.editIndex] = editBlog;
-                this.setState({modalOpen: false, blogs: blogs, editBlog: null, edit: false, editIndex: null, modalTitle: '', modalContent: ''})
+                this.setState({imageEdited: false, imageError: false, modalOpen: false, blogs: blogs, editBlog: null, edit: false, editIndex: null, modalTitle: '', modalContent: '', uploading: false})
             }).catch(err => {
             console.log('error when editing blog entry', err)
         })
@@ -93,17 +144,65 @@ class List extends Component {
     onModalSubmitPressed() {
         let title = this.state.modalTitle;
         let content = this.state.modalContent;
+        let imageAsFile = this.state.imageAsFile;
+
+        if(!imageAsFile || imageAsFile === '' ) {
+            this.setState({imageError: true})
+            return;
+        }
 
         if(!title || title.length === 0 || !content || content.length === 0)
             return;
 
-        let newObject = {
-            title: title,
-            content: content,
-            published: false,
-            createdAt: new Date().toISOString()
+
+        let name = imageAsFile.name;
+        let allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif)$/i;
+
+        if (!allowedExtensions.exec(name)) {
+            console.log('invalid file type')
+            this.setState({imageError: true})
+            return false;
+        } else {
+            this.setState({
+                imageError: false,
+                uploading: true
+            })
         }
 
+        const self = this;
+        const uploadTask = storage.ref(`/images/${imageAsFile.name}`).put(imageAsFile);
+        uploadTask.on('state_changed',
+            (snapShot) => {
+                //takes a snap shot of the process as it is happening
+            }, (err) => {
+                //catches the errors
+                console.log('error', err)
+                self.setState({imageError: true})
+            }, () => {
+                // gets the functions from storage refences the image storage in firebase by the children
+                // gets the download url then sets the image from firebase as the value for the imgUrl key:
+                storage.ref('images').child(imageAsFile.name).getDownloadURL()
+                    .then(fireBaseUrl => {
+                        console.log('image uploaded')
+                        let newObject = {
+                            title: title,
+                            content: content,
+                            published: false,
+                            imageUrl: fireBaseUrl,
+                            imageName: name,
+                            createdAt: new Date().toISOString()
+                        }
+                        self.uploadBlog(newObject)
+                    })
+            })
+
+
+
+
+
+    }
+
+    uploadBlog(newObject) {
         let blogs = this.state.blogs;
 
         firestore.collection('blogs').add(newObject)
@@ -111,9 +210,9 @@ class List extends Component {
                 console.log('added new blog entry', ref.id)
                 newObject.id = ref.id;
                 blogs.unshift(newObject)
-                this.setState({modalOpen: false, blogs: blogs, edit: false, modalTitle: '', modalContent: ''})
+                this.setState({modalOpen: false, blogs: blogs, edit: false, modalTitle: '', modalContent: '', imageError: false, uploading: false})
             }).catch(err => {
-                console.log('error when adding new blog entry', err)
+            console.log('error when adding new blog entry', err)
         })
     }
 
@@ -149,6 +248,23 @@ class List extends Component {
         })
     }
 
+    handleImageAsFileUpload(e) {
+        const image = e.target.files[0];
+        this.setState({
+            imageAsFile: image,
+            imageError: false
+        })
+    }
+
+    handleImageAsFileUploadEdit(e) {
+        const image = e.target.files[0];
+        this.setState({
+            imageAsFile: image,
+            imageError: false,
+            imageEdited: true
+        })
+    }
+
     renderBlogs() {
         let toReturn = [];
         let blogs = this.state.blogs;
@@ -162,7 +278,7 @@ class List extends Component {
                     <td style={publishStyle}><img style={{height: 30, width: 30, cursor: 'pointer'}} src={imgSrc} onClick={() => this.publishToggle(i)}/></td>
                     <td style={titleStyle} onClick={() => this.onEditClicked(i)}>{blog.title}</td>
                     <td style={contentStyle} onClick={() => this.onEditClicked(i)}>{blog.content}</td>
-                    <td style={imageStyle} onClick={() => this.onEditClicked(i)}>{blog.image}</td>
+                    <td style={imageStyle} onClick={() => this.onEditClicked(i)}>{blog.imageUrl}</td>
                     <td style={createdStyle} onClick={() => this.onEditClicked(i)}>{date.format("MM/DD/YY, h:mm:ss a")}</td>
                 </tr>
             )
@@ -176,7 +292,7 @@ class List extends Component {
         return (
             <div>
                 <p
-                    onClick={() => this.setState({modalOpen: false, edit: false, modalTitle: '', modalContent: ''})}
+                    onClick={() => this.setState({modalOpen: false, edit: false, modalTitle: '', modalContent: '', imageError: false})}
                     style={{position: 'absolute', right: 15, top: 5, cursor: 'pointer', fontSize: 26}}>
                     X
                 </p>
@@ -196,7 +312,51 @@ class List extends Component {
                     value={this.state.modalContent}
                     onChange={(e) => this.setState({modalContent: e.target.value})} />
 
-                {
+
+
+                {this.state.edit ?
+                    <div>
+                        <div><p>Uploaded image name : {this.state.editBlog.imageName}</p></div>
+                        <p style={{display: 'inline'}}>Upload Image:  </p>
+                        <input
+                            onChange={this.handleImageAsFileUploadEdit.bind(this)}
+                            // allows you to reach into your file directory and upload image to the browser
+                            type="file"
+                        />
+
+                        {
+                            this.state.imageError &&
+                            <p style={{fontSize: 14, color: 'red', marginTop: 5}}>Please upload a valid image</p>
+                        }
+                    </div>
+                    :
+                    <div>
+                        <p style={{display: 'inline'}}>Upload Image:  </p>
+                        <input
+                            onChange={this.handleImageAsFileUpload.bind(this)}
+                            // allows you to reach into your file directory and upload image to the browser
+                            type="file"
+                        />
+
+                        {
+                            this.state.imageError &&
+                            <p style={{fontSize: 14, color: 'red', marginTop: 5}}>Please upload a valid image</p>
+                        }
+                    </div>
+                }
+
+
+
+
+
+                {this.state.uploading ?
+                    <Loader
+                        type="Bars"
+                        color="#79CDCD"
+                        height={200}
+                        width={100}
+                    />
+                    :
                     this.state.edit ?
                         <button
                             onClick={this.onModalEditPressed.bind(this)}
@@ -212,6 +372,7 @@ class List extends Component {
                             Submit
                         </button>
                 }
+
             </div>
         )
     }
