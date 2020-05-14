@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import database from '../services/database.js'
 import Modal from 'react-modal';
+import styles from '../styles/List.module.css'
 
 let moment = require('moment');
 
@@ -83,7 +84,7 @@ class List extends Component {
             .then(ref => {
                 console.log('edited blog')
                 blogs[this.state.editIndex] = editBlog;
-                this.setState({modalOpen: false, blogs: blogs, editBlog: null, edit: false, editIndex: null})
+                this.setState({modalOpen: false, blogs: blogs, editBlog: null, edit: false, editIndex: null, modalTitle: '', modalContent: ''})
             }).catch(err => {
             console.log('error when editing blog entry', err)
         })
@@ -110,7 +111,7 @@ class List extends Component {
                 console.log('added new blog entry', ref.id)
                 newObject.id = ref.id;
                 blogs.unshift(newObject)
-                this.setState({modalOpen: false, blogs: blogs})
+                this.setState({modalOpen: false, blogs: blogs, edit: false, modalTitle: '', modalContent: ''})
             }).catch(err => {
                 console.log('error when adding new blog entry', err)
         })
@@ -160,9 +161,9 @@ class List extends Component {
                 <tr key={i}>
                     <td style={publishStyle}><img style={{height: 30, width: 30, cursor: 'pointer'}} src={imgSrc} onClick={() => this.publishToggle(i)}/></td>
                     <td style={titleStyle} onClick={() => this.onEditClicked(i)}>{blog.title}</td>
-                    <td style={contentStyle}>{blog.content}</td>
-                    <td style={imageStyle}>{blog.image}</td>
-                    <td style={createdStyle}>{date.format("MM/DD/YY, h:mm:ss a")}</td>
+                    <td style={contentStyle} onClick={() => this.onEditClicked(i)}>{blog.content}</td>
+                    <td style={imageStyle} onClick={() => this.onEditClicked(i)}>{blog.image}</td>
+                    <td style={createdStyle} onClick={() => this.onEditClicked(i)}>{date.format("MM/DD/YY, h:mm:ss a")}</td>
                 </tr>
             )
         }
@@ -200,14 +201,14 @@ class List extends Component {
                         <button
                             onClick={this.onModalEditPressed.bind(this)}
                             type="button"
-                            style={{marginTop: 20, borderWidth: 1, padding: 10, borderRadius: 5, backgroundColor: '#79CDCD', color: 'white', width: 200}}>
+                            style={{marginTop: 20, borderWidth: 1, padding: 10, borderRadius: 5, backgroundColor: '#79CDCD', color: 'white', width: 200, cursor: 'pointer'}}>
                             Edit
                         </button>
                         :
                         <button
                             onClick={this.onModalSubmitPressed.bind(this)}
                             type="button"
-                            style={{marginTop: 20, borderWidth: 1, padding: 10, borderRadius: 5, backgroundColor: '#79CDCD', color: 'white', width: 200}}>
+                            style={{marginTop: 20, borderWidth: 1, padding: 10, borderRadius: 5, backgroundColor: '#79CDCD', color: 'white', width: 200, cursor: 'pointer'}}>
                             Submit
                         </button>
                 }
@@ -224,7 +225,7 @@ class List extends Component {
                 <button
                     onClick={() => this.setState({modalOpen: true})}
                     type="button"
-                    style={{ float: 'left', marginBottom: 20, borderWidth: 1, padding: 10, borderRadius: 5, backgroundColor: '#79CDCD', color: 'white', width: 200}}>
+                    className={styles.addNewBtn}>
                     Add New Entry
                 </button>
 
@@ -293,6 +294,7 @@ const imageHStyle = {
 
 const imageStyle = {
     width: '10%',
+    cursor: 'pointer'
 }
 
 
@@ -302,10 +304,12 @@ const titleStyle = {
 }
 
 const contentStyle = {
-    width: '50%'
+    width: '50%',
+    cursor: 'pointer'
 }
 const createdStyle = {
-    width: '20%'
+    width: '20%',
+    cursor: 'pointer'
 }
 
 export default List;
