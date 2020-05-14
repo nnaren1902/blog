@@ -278,7 +278,7 @@ class List extends Component {
                     <td style={publishStyle}><img style={{height: 30, width: 30, cursor: 'pointer'}} src={imgSrc} onClick={() => this.publishToggle(i)}/></td>
                     <td style={titleStyle} onClick={() => this.onEditClicked(i)}>{blog.title}</td>
                     <td style={contentStyle} onClick={() => this.onEditClicked(i)}>{blog.content}</td>
-                    <td style={imageStyle} onClick={() => this.onEditClicked(i)}>{blog.imageUrl}</td>
+                    <td style={imageStyle} onClick={() => this.onEditClicked(i)}>{blog.imageName}</td>
                     <td style={createdStyle} onClick={() => this.onEditClicked(i)}>{date.format("MM/DD/YY, h:mm:ss a")}</td>
                 </tr>
             )
