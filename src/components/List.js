@@ -7,7 +7,17 @@ import styles from '../styles/List.module.css'
 
 let moment = require('moment');
 
+
 let firestore = database.firestore();
+
+const CATEGORIES = {
+    hvt: 'History VS. Today',
+    ge: 'General Election',
+    p: 'Politics',
+    si: 'Social Icons',
+    c19: 'COVID-19',
+}
+
 
 const modalStyle = {
     overlay: {
@@ -19,7 +29,7 @@ const modalStyle = {
     },
     content : {
         width: '75%',
-        top                : '30%',
+        top                : '40%',
         left                  : '50%',
         right                 : 'auto',
         bottom                : 'auto',
@@ -42,16 +52,20 @@ class List extends Component {
             editBlog: null,
             editIndex: null,
             imageError: false,
-            uploading: false
+            uploading: false,
+            checkBoxes: {},
+            checkboxError: false
         }
-
         this.publishToggle = this.publishToggle.bind(this);
         this.onEditClicked = this.onEditClicked.bind(this);
         this.uploadBlog = this.uploadBlog.bind(this);
         this.updateblog = this.updateblog.bind(this);
+        this.setCheckboxes = this.setCheckboxes.bind(this);
     }
 
     componentDidMount() {
+        this.setCheckboxes()
+
         firestore.collection('blogs').get()
             .then(docref => {
                 let blogs = [];
@@ -71,6 +85,17 @@ class List extends Component {
                     blogs: blogs.reverse()
                 })
             })
+    }
+
+    setCheckboxes() {
+        //set all checkboxes to unchecked for controlled vs uncontrolled problem
+        let checkBoxes = {}
+        Object.keys(CATEGORIES).forEach(cat => {
+            checkBoxes[cat] = false
+        })
+        this.setState({
+            checkBoxes: checkBoxes
+        })
     }
 
     onModalEditPressed() {
@@ -142,6 +167,22 @@ class List extends Component {
     }
 
     onModalSubmitPressed() {
+        let checkBoxes = this.state.checkBoxes;
+        let tags = [];
+        Object.keys(checkBoxes).forEach(cat => {
+            if(checkBoxes[cat])
+                tags.push(cat)
+        })
+
+        if(tags.length === 0) {
+            //atleast on tag shoudl be included
+            this.setState({
+                checkboxError: true
+            })
+            return
+        }
+        this.setCheckboxes();
+
         let title = this.state.modalTitle;
         let content = this.state.modalContent;
         let imageAsFile = this.state.imageAsFile;
@@ -190,6 +231,7 @@ class List extends Component {
                             published: false,
                             imageUrl: fireBaseUrl,
                             imageName: name,
+                            tags: tags,
                             createdAt: new Date().toISOString()
                         }
                         self.uploadBlog(newObject)
@@ -265,6 +307,17 @@ class List extends Component {
         })
     }
 
+    handleInputChange(event) {
+        const target = event.target;
+        const name = target.name;
+        let checkBoxes = this.state.checkBoxes;
+        checkBoxes[name] = target.checked;
+        this.setState({
+            checkBoxes: checkBoxes,
+            checkboxError: false
+        })
+    }
+
     renderBlogs() {
         let toReturn = [];
         let blogs = this.state.blogs;
@@ -273,10 +326,17 @@ class List extends Component {
             let blog = blogs[i]
             let date = moment(blog.createdAt);
             let imgSrc = blog.published ? require('../assets/check.png') : require('../assets/check_n.png');
+            let tags = blog.tags;
+            let tagStringArray = [];
+            tags.forEach(tag => {
+                tagStringArray.push(CATEGORIES[tag])
+            })
+
             toReturn.push(
                 <tr key={i}>
                     <td style={publishStyle}><img style={{height: 30, width: 30, cursor: 'pointer'}} src={imgSrc} onClick={() => this.publishToggle(i)}/></td>
                     <td style={titleStyle} onClick={() => this.onEditClicked(i)}>{blog.title}</td>
+                    <td style={tagsStyle}>{tagStringArray.join()}</td>
                     <td style={contentStyle} onClick={() => this.onEditClicked(i)}>{blog.content}</td>
                     <td style={imageStyle} onClick={() => this.onEditClicked(i)}>{blog.imageName}</td>
                     <td style={createdStyle} onClick={() => this.onEditClicked(i)}>{date.format("MM/DD/YY, h:mm:ss a")}</td>
@@ -286,6 +346,37 @@ class List extends Component {
 
 
         return toReturn;
+    }
+
+
+    getCheckboxes() {
+        let toReturn = [];
+        let i = 0;
+        Object.keys(CATEGORIES).forEach(cat =>  {
+            toReturn.push(
+                <div key={i.toString()}
+                     style={{display: 'flex', flexDirection: 'row', marginRight: 10}}>
+                    <label>{CATEGORIES[cat]}: </label>
+                    <input
+                        name={cat}
+                        type="checkbox"
+                        checked={this.state.checkBoxes[cat]}
+                        onChange={this.handleInputChange.bind(this)} />
+                </div>
+            )
+
+            i = i + 1;
+        })
+
+        return toReturn;
+    }
+
+    renderChecks() {
+        return (
+            <div style={{display: 'flex', flexDirection: 'row', flexWrap: 'wrap', marginTop: 20, marginBottom: 20}}>
+                {this.getCheckboxes()}
+            </div>
+        )
     }
 
     renderModal() {
@@ -311,6 +402,8 @@ class List extends Component {
                     style={{display: 'block', width: '80%', padding: 6, color: 'black', borderRadius: 5, marginTop: 20, resize: 'none'}}
                     value={this.state.modalContent}
                     onChange={(e) => this.setState({modalContent: e.target.value})} />
+
+                {this.renderChecks()}
 
 
 
@@ -373,6 +466,10 @@ class List extends Component {
                         </button>
                 }
 
+                {this.state.checkboxError &&
+                <p style={{color: 'red', fontSize: 16}}>Please select at least one category for the blog</p>
+                }
+
             </div>
         )
     }
@@ -397,6 +494,7 @@ class List extends Component {
                     <tr>
                         <th style={publishHStyle}>Published</th>
                         <th style={titleHStyle}>Title</th>
+                        <th style={tagsHStyle}>Tags</th>
                         <th style={contentHStyle}>Content</th>
                         <th style={imageHStyle}>Image</th>
                         <th style={createdHStyle}>Created At</th>
@@ -433,18 +531,20 @@ const publishHStyle = {
     fontWeight: 'bold'
 }
 
-const publishStyle = {
-    width: '10%',
-    textAlign: 'center'
-}
 
 const contentHStyle = {
-    width: '40%',
+    width: '30%',
+    fontWeight: 'bold'
+}
+
+
+const tagsHStyle = {
+    width: '15%',
     fontWeight: 'bold'
 }
 
 const createdHStyle = {
-    width: '20%',
+    width: '15%',
     fontWeight: 'bold'
 }
 
@@ -458,18 +558,28 @@ const imageStyle = {
     cursor: 'pointer'
 }
 
+const publishStyle = {
+    width: '10%',
+    textAlign: 'center'
+}
+
 
 const titleStyle = {
+    width: '20%',
+    cursor: 'pointer'
+}
+
+const tagsStyle = {
+    width: '15%',
+}
+
+
+const contentStyle = {
     width: '30%',
     cursor: 'pointer'
 }
-
-const contentStyle = {
-    width: '50%',
-    cursor: 'pointer'
-}
 const createdStyle = {
-    width: '20%',
+    width: '15%',
     cursor: 'pointer'
 }
 
