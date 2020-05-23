@@ -64,8 +64,6 @@ class List extends Component {
     }
 
     componentDidMount() {
-        this.setCheckboxes()
-
         firestore.collection('blogs').get()
             .then(docref => {
                 let blogs = [];
@@ -99,6 +97,21 @@ class List extends Component {
     }
 
     onModalEditPressed() {
+        let checkBoxes = this.state.checkBoxes;
+        let tags = [];
+        Object.keys(checkBoxes).forEach(cat => {
+            if(checkBoxes[cat])
+                tags.push(cat)
+        })
+
+        if(tags.length === 0) {
+            //atleast on tag shoudl be included
+            this.setState({
+                checkboxError: true
+            })
+            return
+        }
+
         let title = this.state.modalTitle;
         let content = this.state.modalContent;
 
@@ -108,6 +121,7 @@ class List extends Component {
         let editBlog = this.state.editBlog;
         editBlog.title = title;
         editBlog.content = content;
+        editBlog.tags = tags;
 
         //if image updated
         if(this.state.imageEdited) {
@@ -181,7 +195,6 @@ class List extends Component {
             })
             return
         }
-        this.setCheckboxes();
 
         let title = this.state.modalTitle;
         let content = this.state.modalContent;
@@ -280,13 +293,20 @@ class List extends Component {
         let blogs = this.state.blogs;
         let blog = blogs[index];
 
+        let tags = blog.tags;
+        let checkBoxes = {};
+        Object.keys(CATEGORIES).forEach(cat => {
+            checkBoxes[cat] = tags.includes(cat)
+        })
+
         this.setState({
             modalOpen: true,
             edit: true,
             editBlog: blog,
             editIndex: index,
             modalTitle: blog.title,
-            modalContent: blog.content
+            modalContent: blog.content,
+            checkBoxes: checkBoxes
         })
     }
 
@@ -315,6 +335,13 @@ class List extends Component {
         this.setState({
             checkBoxes: checkBoxes,
             checkboxError: false
+        })
+    }
+
+    onNewModalPressed() {
+        this.setCheckboxes();
+        this.setState({
+            modalOpen: true
         })
     }
 
@@ -481,7 +508,7 @@ class List extends Component {
                 <h1 style={{color: 'red'}}>Admin Portal</h1>
 
                 <button
-                    onClick={() => this.setState({modalOpen: true})}
+                    onClick={this.onNewModalPressed.bind(this)}
                     type="button"
                     className={styles.addNewBtn}>
                     Add New Entry
