@@ -45,6 +45,7 @@ class List extends Component {
             blogs: null,
             surveys: null,
             modalOpen: false,
+            surveyResults: false,
             modalTitle: '',
             modalContent: '',
             imageAsFile: null,
@@ -63,7 +64,6 @@ class List extends Component {
             showBlogs: true
         }
         this.publishToggle = this.publishToggle.bind(this);
-        this.onEditClicked = this.onEditClicked.bind(this);
         this.uploadBlog = this.uploadBlog.bind(this);
         this.updateblog = this.updateblog.bind(this);
         this.setCheckboxes = this.setCheckboxes.bind(this);
@@ -306,25 +306,49 @@ class List extends Component {
         })
     }
 
-    publishToggle(index) {
-        let blogs = this.state.blogs;
-        let blog = blogs[index];
+    publishToggle(index, isBlogs) {
 
-        let published = blog.published;
-        blog.published = !published;
+        if(isBlogs) {
+            let blogs = this.state.blogs;
+            let blog = blogs[index];
 
-        firestore.collection('blogs').doc(blog.id).update({
-            published: !published
-        }).then(() => {
-            this.setState({
-                blogs: blogs
+            let published = blog.published;
+            blog.published = !published;
+
+            firestore.collection('blogs').doc(blog.id).update({
+                published: !published
+            }).then(() => {
+                this.setState({
+                    blogs: blogs
+                })
             })
-        })
+        } else {
+            let {surveys} = this.state;
+            let survey = surveys[index];
 
+            let published = survey.published;
+            survey.published = !published;
 
+            firestore.collection('surveys').doc(survey.id).update({
+                published: !published
+            }).then(() => {
+                this.setState({
+                    surveys: surveys
+                })
+            })
+        }
     }
 
-    onEditClicked(index) {
+    onSurveyEditClicked(index) {
+        let survey = this.state.surveys[index]
+        this.setState({
+            modalOpen: true,
+            surveyResults: true,
+            survey: true,
+        })
+    }
+
+    onBlogEditClicked(index) {
         let blogs = this.state.blogs;
         let blog = blogs[index];
 
@@ -380,6 +404,30 @@ class List extends Component {
         })
     }
 
+    renderSurveys() {
+        let toReturn = [];
+        let surveys = this.state.surveys;
+
+        for(let i=0; i<surveys.length; i++) {
+            let survey = surveys[i]
+            let date = moment(survey.createdAt)
+            let answers = survey.answers;
+            let count = answers ? answers.length : 0
+            let imgSrc = survey.published ? require('../assets/check.png') : require('../assets/check_n.png');
+            toReturn.push(
+                <tr key={survey.id}>
+                    <td style={publishStyle}><img style={{height: 30, width: 30, cursor: 'pointer'}} src={imgSrc} onClick={() => this.publishToggle(i, false)}/></td>
+                    <td style={questionStyle} onClick={() => this.onSurveyEditClicked(i)}>{survey.question}</td>
+                    <td style={countStyle} onClick={() => this.onSurveyEditClicked(i)}>{count}</td>
+                    <td style={createdStyle} onClick={() => this.onSurveyEditClicked(i)}>{date.format("MM/DD/YY, h:mm:ss a")}</td>
+                </tr>
+            )
+
+        }
+
+        return toReturn;
+    }
+
     renderBlogs() {
         let toReturn = [];
         let blogs = this.state.blogs;
@@ -395,13 +443,13 @@ class List extends Component {
             })
 
             toReturn.push(
-                <tr key={i}>
-                    <td style={publishStyle}><img style={{height: 30, width: 30, cursor: 'pointer'}} src={imgSrc} onClick={() => this.publishToggle(i)}/></td>
-                    <td style={titleStyle} onClick={() => this.onEditClicked(i)}>{blog.title}</td>
+                <tr key={blog.id}>
+                    <td style={publishStyle}><img style={{height: 30, width: 30, cursor: 'pointer'}} src={imgSrc} onClick={() => this.publishToggle(i, true)}/></td>
+                    <td style={titleStyle} onClick={() => this.onBlogEditClicked(i)}>{blog.title}</td>
                     <td style={tagsStyle}>{tagStringArray.join()}</td>
-                    <td style={contentStyle} onClick={() => this.onEditClicked(i)}>{blog.content}</td>
-                    <td style={imageStyle} onClick={() => this.onEditClicked(i)}>{blog.imageName}</td>
-                    <td style={createdStyle} onClick={() => this.onEditClicked(i)}>{date.format("MM/DD/YY, h:mm:ss a")}</td>
+                    <td style={contentStyle} onClick={() => this.onBlogEditClicked(i)}>{blog.content}</td>
+                    <td style={imageStyle} onClick={() => this.onBlogEditClicked(i)}>{blog.imageName}</td>
+                    <td style={createdStyle} onClick={() => this.onBlogEditClicked(i)}>{date.format("MM/DD/YY, h:mm:ss a")}</td>
                 </tr>
             )
         }
@@ -537,7 +585,7 @@ class List extends Component {
     }
 
     surveyClosePressed() {
-        this.setState({modalOpen: false, survey: false})
+        this.setState({modalOpen: false, survey: false, surveyResults: false})
     }
 
     surveyOptionChanged(event, index) {
@@ -551,9 +599,23 @@ class List extends Component {
         let question = this.state.surveyQuestion;
         let surveyOptions = this.state.surveyOptions;
 
+        if(!question || question.length === 0 )
+            return
+
+        let flag = false
+        surveyOptions.forEach(option => {
+            if(option.length === 0)
+                flag = true
+        })
+
+        if(flag)
+            return
+
         let toWrite = {
             question: question,
-            options: surveyOptions
+            options: surveyOptions,
+            createdAt: new Date().toISOString(),
+            published: false
         }
 
         firestore.collection('surveys').add(toWrite)
@@ -638,8 +700,7 @@ class List extends Component {
         return toReturn;
     }
 
-
-    renderSurveyForm() {
+    renderCreateSurveyForm() {
         return (
             <div>
                 <p
@@ -670,6 +731,21 @@ class List extends Component {
 
             </div>
         )
+    }
+
+    renderSurveyResults() {
+        return (
+            <div>
+                <p style={{color: 'black'}}>rstuls</p>
+            </div>
+        )
+    }
+
+    renderSurveyForm() {
+        if(this.state.surveyResults)
+            return this.renderSurveyResults()
+        else
+            return this.renderCreateSurveyForm()
     }
 
     renderModal() {
@@ -761,7 +837,7 @@ class List extends Component {
                         <th style={createdHStyle}>Created At</th>
                     </tr>
 
-
+                    {this.renderSurveys()}
 
                     </tbody>
                 </table>
@@ -815,9 +891,20 @@ const questionHStyle = {
     fontWeight: 'bold'
 }
 
+
 const countHStyle = {
     width: '30%',
     fontWeight: 'bold'
+}
+
+const questionStyle = {
+    width: '45%',
+    cursor: 'pointer'
+}
+
+const countStyle = {
+    width: '30%',
+    cursor: 'pointer'
 }
 
 const imageHStyle = {
@@ -832,7 +919,8 @@ const imageStyle = {
 
 const publishStyle = {
     width: '10%',
-    textAlign: 'center'
+    textAlign: 'center',
+    cursor: 'pointer'
 }
 
 
