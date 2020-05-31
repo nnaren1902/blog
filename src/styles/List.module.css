@@ -9,6 +9,30 @@
     color: white;
     width: 200px;
     cursor: pointer;
+    margin-left: 20px;
+    margin-right: 20px;
+    font-weight: bold
+}
+
+.surveyOption {
+    border-radius: 5px;
+    border-width: 1px;
+    color: black;
+    border-style: solid;
+    border-color: gray;
+    width: 40%;
+    padding: 6px;
+    height: 40px;
+    margin-top: 10px;
+}
+
+.tabWrapper {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    margin-top: 60px;
+    margin-bottom: 80px;
+    justify-content: center;
 }
 
 .addNewBtn:focus {

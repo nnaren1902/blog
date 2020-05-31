@@ -18,7 +18,6 @@ const CATEGORIES = {
     c19: 'COVID-19',
 }
 
-
 const modalStyle = {
     overlay: {
         top: 0,
@@ -44,6 +43,7 @@ class List extends Component {
         super();
         this.state = {
             blogs: null,
+            surveys: null,
             modalOpen: false,
             modalTitle: '',
             modalContent: '',
@@ -54,7 +54,13 @@ class List extends Component {
             imageError: false,
             uploading: false,
             checkBoxes: {},
-            checkboxError: false
+            checkboxError: false,
+            survey: false,
+            surveyQuestion: '',
+            surveyOptionsLength: 2, //default
+            surveyOptions: ['', ''],
+            showSurveys: false,
+            showBlogs: true
         }
         this.publishToggle = this.publishToggle.bind(this);
         this.onEditClicked = this.onEditClicked.bind(this);
@@ -76,13 +82,42 @@ class List extends Component {
                 blogs.sort(function(a,b){
                     // Turn your strings into dates, and then subtract them
                     // to get a value that is either negative, positive, or zero.
-                    return new Date(a.createdAt) - new Date(b.createdAt);
+                    return new Date(b.createdAt) - new Date(a.createdAt);
                 });
 
                 this.setState({
-                    blogs: blogs.reverse()
+                    blogs: blogs
                 })
             })
+
+    //    get surveys
+        firestore.collection('surveys').get()
+            .then(docref => {
+                let surveys = [];
+                docref.forEach(doc => {
+                    let data = doc.data();
+                    data.id = doc.id;
+                    surveys.push(data)
+                })
+
+                surveys.sort(function(a,b){
+                    // Turn your strings into dates, and then subtract them
+                    // to get a value that is either negative, positive, or zero.
+                    return new Date(b.createdAt) - new Date(a.createdAt);
+                });
+
+                this.setState({
+                    surveys: surveys
+                })
+            })
+    }
+
+    onNewSurveyPressed() {
+        this.setState({
+            modalOpen: true,
+            survey: true
+        })
+
     }
 
     setCheckboxes() {
@@ -338,7 +373,7 @@ class List extends Component {
         })
     }
 
-    onNewModalPressed() {
+    onNewBlogPressed() {
         this.setCheckboxes();
         this.setState({
             modalOpen: true
@@ -406,7 +441,7 @@ class List extends Component {
         )
     }
 
-    renderModal() {
+    renderBlogForm() {
         return (
             <div>
                 <p
@@ -415,7 +450,7 @@ class List extends Component {
                     X
                 </p>
 
-                <h2 style={{textAlign: 'center'}}>New Entry</h2>
+                <h2 style={{textAlign: 'center'}}>New Blog Entry</h2>
 
                 <input value={this.state.modalTitle}
                        style={{borderRadius: 5, borderWidth: 1,color: 'black', borderStyle: 'solid', borderColor: 'gray', width: '75%', padding: 6, height: 40, marginTop: 20}}
@@ -501,21 +536,204 @@ class List extends Component {
         )
     }
 
+    surveyClosePressed() {
+        this.setState({modalOpen: false, survey: false})
+    }
+
+    surveyOptionChanged(event, index) {
+        let text = event.target.value;
+        let surveyOptions = this.state.surveyOptions;
+        surveyOptions[index] = text;
+        this.setState({surveyOptions: surveyOptions})
+    }
+
+    onSurveySubmitPressed() {
+        let question = this.state.surveyQuestion;
+        let surveyOptions = this.state.surveyOptions;
+
+        let toWrite = {
+            question: question,
+            options: surveyOptions
+        }
+
+        firestore.collection('surveys').add(toWrite)
+            .then(docRef =>  {
+                console.log('added new survey')
+                this.setState({modalOpen: false, survey: false, surveyOptionsLength: 2, surveyOptions: ["", ""]})
+                window.alert("Survey created. Publish from the list now!");
+            }).catch(err => {
+                console.log('Something went wrong when adding survey', err)
+                window.alert('try again')
+        })
+    }
+
+    onAddMoreOptionsPressed() {
+        let currentLength = this.state.surveyOptionsLength
+        let currentSurveyOptions = this.state.surveyOptions;
+        currentSurveyOptions.push('')
+
+        this.setState({
+            surveyOptions: currentSurveyOptions,
+            surveyOptionsLength: currentLength + 1
+        })
+    }
+
+    onDeleteSurveyOption(index) {
+        let currentLength = this.state.surveyOptionsLength
+        let currentSurveyOptions = this.state.surveyOptions;
+        currentSurveyOptions.splice(index, 1) //remove one element
+
+        this.setState({
+            surveyOptions: currentSurveyOptions,
+            surveyOptionsLength: currentLength - 1
+        })
+    }
+
+    onTabClicked(index) {
+        switch(index) {
+            case 0: this.setState({showBlogs: true, showSurveys: false})
+                return;
+            case 1: this.setState({showSurveys: true, showBlogs: false})
+                return;
+        }
+    }
+
+    renderSurveyOptions() {
+        let toReturn = [];
+
+        for(let i=0; i<this.state.surveyOptionsLength; i++) {
+            toReturn.push(
+                <div key={i.toString()} style={{display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
+                    <input
+                        value={this.state.surveyOptions[i]}
+                        className={styles.surveyOption}
+                        onChange={(e) => this.surveyOptionChanged(e, i)}
+                        placeholder={'Enter option ' + (i+1) +'....'}
+                        type='text'/>
+                    {
+                        this.state.surveyOptionsLength >= 3 &&
+                        <img
+                            onClick={() => this.onDeleteSurveyOption(i)}
+                            style={{height: 30, width: 30, marginLeft: 12}}
+                            src={require('../assets/delete.png')}/>
+                    }
+
+                </div>
+            )
+        }
+
+        if(this.state.surveyOptionsLength < 5) {
+            toReturn.push(
+                <p
+                    key={'unique'}
+                    onClick={this.onAddMoreOptionsPressed.bind(this)}
+                    style={{color: 'blue', textDecoration: 'underline', cursor: 'pointer'}}
+                >
+                    Add more +
+                </p>
+            )
+
+        }
+
+        return toReturn;
+    }
+
+
+    renderSurveyForm() {
+        return (
+            <div>
+                <p
+                    onClick={() => this.surveyClosePressed()}
+                    style={{position: 'absolute', right: 15, top: 5, cursor: 'pointer', fontSize: 26}}>
+                    X
+                </p>
+
+                <h2 style={{textAlign: 'center'}}>New Survey</h2>
+
+                <input value={this.state.surveyQuestion}
+                       style={{borderRadius: 5, borderWidth: 1,color: 'black', borderStyle: 'solid', borderColor: 'gray', width: '75%', padding: 6, height: 60, marginTop: 20}}
+                       onChange={(e) => this.setState({surveyQuestion: e.target.value})}
+                       placeholder='Enter the question....'
+                       type='text'/>
+
+                <div style={{width: '90%', padding: 10, marginTop: 30}}>
+                    {this.renderSurveyOptions()}
+                </div>
+
+
+                <button
+                    onClick={this.onSurveySubmitPressed.bind(this)}
+                    type="button"
+                    style={{marginTop: 20, borderWidth: 1, padding: 10, borderRadius: 5, backgroundColor: '#79CDCD', color: 'white', width: 200, cursor: 'pointer'}}>
+                    Submit
+                </button>
+
+            </div>
+        )
+    }
+
+    renderModal() {
+        if(this.state.survey) {
+            return this.renderSurveyForm()
+        } else {
+            return this.renderBlogForm()
+        }
+    }
+
 
     render() {
         return (
             <div style={{paddingLeft: 50, paddingRight: 50, color: 'white', backgroundColor: 'white'}}>
                 <h1 style={{color: 'red'}}>Admin Portal</h1>
 
-                <button
-                    onClick={this.onNewModalPressed.bind(this)}
-                    type="button"
-                    className={styles.addNewBtn}>
-                    Add New Entry
-                </button>
+                <div style={{display: 'flex', flexDirection: 'row'}}>
+                    <button
+                        onClick={this.onNewBlogPressed.bind(this)}
+                        type="button"
+                        className={styles.addNewBtn}>
+                        Add New Blog
+                    </button>
+
+                    <button
+                        onClick={this.onNewSurveyPressed.bind(this)}
+                        type="button"
+                        className={styles.addNewBtn}>
+                        Add New Survey
+                    </button>
 
 
-                {this.state.blogs &&
+                </div>
+
+                {/*tabbar*/}
+                <div className={styles.tabWrapper}>
+                    <div
+                        style={{
+                            width: '25%',
+                            borderBottomWidth: 3,
+                            borderBottomColor: '#79CDCD',
+                            borderStyle: this.state.showBlogs ? 'solid': null,
+                            marginRight: 40
+                        }}>
+                        <p
+                            onClick={() => this.onTabClicked(0)}
+                            style={{color: 'black', fontWeight: 'bold', cursor: 'pointer'}}>Blogs</p>
+                    </div>
+                    <div
+                        style={{
+                            width: '25%',
+                            borderBottomWidth: 3,
+                            borderBottomColor: '#79CDCD',
+                            borderStyle: this.state.showSurveys ? 'solid': null,
+                            marginLeft: 40
+                        }}>
+                        <p
+                            onClick={() => this.onTabClicked(1)}
+                            style={{color: 'black', fontWeight: 'bold', cursor: 'pointer'}}>Surveys</p>
+                    </div>
+                </div>
+
+
+                {this.state.showBlogs && this.state.blogs &&
                 <table>
                     <tbody>
                     <tr>
@@ -532,6 +750,23 @@ class List extends Component {
                     </tbody>
                 </table>
                 }
+
+                {this.state.showSurveys && this.state.surveys &&
+                <table>
+                    <tbody>
+                    <tr>
+                        <th style={publishHStyle}>Published</th>
+                        <th style={questionHStyle}>Question</th>
+                        <th style={countHStyle}>Total Responses</th>
+                        <th style={createdHStyle}>Created At</th>
+                    </tr>
+
+
+
+                    </tbody>
+                </table>
+                }
+
 
                 <Modal
                     ariaHideApp={false}
@@ -572,6 +807,16 @@ const tagsHStyle = {
 
 const createdHStyle = {
     width: '15%',
+    fontWeight: 'bold'
+}
+
+const questionHStyle = {
+    width: '45%',
+    fontWeight: 'bold'
+}
+
+const countHStyle = {
+    width: '30%',
     fontWeight: 'bold'
 }
 
