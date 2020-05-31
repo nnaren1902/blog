@@ -618,10 +618,12 @@ class List extends Component {
             published: false
         }
 
+        let surveys = this.state.surveys;
+
         firestore.collection('surveys').add(toWrite)
             .then(docRef =>  {
-                console.log('added new survey')
-                this.setState({modalOpen: false, survey: false, surveyOptionsLength: 2, surveyOptions: ["", ""]})
+                surveys.unshift(toWrite);
+                this.setState({modalOpen: false, surveys: surveys, survey: false, surveyOptionsLength: 2, surveyOptions: ["", ""]})
                 window.alert("Survey created. Publish from the list now!");
             }).catch(err => {
                 console.log('Something went wrong when adding survey', err)
@@ -792,7 +794,7 @@ class List extends Component {
                         }}>
                         <p
                             onClick={() => this.onTabClicked(0)}
-                            style={{color: 'black', fontWeight: 'bold', cursor: 'pointer'}}>Blogs</p>
+                            style={{color: 'black', fontWeight: 'bold', cursor: 'pointer', fontSize: 22}}>Blogs</p>
                     </div>
                     <div
                         style={{
@@ -804,7 +806,7 @@ class List extends Component {
                         }}>
                         <p
                             onClick={() => this.onTabClicked(1)}
-                            style={{color: 'black', fontWeight: 'bold', cursor: 'pointer'}}>Surveys</p>
+                            style={{color: 'black', fontWeight: 'bold', cursor: 'pointer', fontSize: 22}}>Surveys</p>
                     </div>
                 </div>
 
