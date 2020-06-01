@@ -57,6 +57,7 @@ class List extends Component {
             checkBoxes: {},
             checkboxError: false,
             survey: false,
+            surveyTitle: '',
             surveyQuestion: '',
             surveyOptionsLength: 2, //default
             surveyOptions: ['', ''],
@@ -417,7 +418,7 @@ class List extends Component {
             toReturn.push(
                 <tr key={survey.id}>
                     <td style={publishStyle}><img style={{height: 30, width: 30, cursor: 'pointer'}} src={imgSrc} onClick={() => this.publishToggle(i, false)}/></td>
-                    <td style={questionStyle} onClick={() => this.onSurveyEditClicked(i)}>{survey.question}</td>
+                    <td style={questionStyle} onClick={() => this.onSurveyEditClicked(i)}>{survey.title}</td>
                     <td style={countStyle} onClick={() => this.onSurveyEditClicked(i)}>{count}</td>
                     <td style={createdStyle} onClick={() => this.onSurveyEditClicked(i)}>{date.format("MM/DD/YY, h:mm:ss a")}</td>
                 </tr>
@@ -596,8 +597,12 @@ class List extends Component {
     }
 
     onSurveySubmitPressed() {
+        let title = this.state.surveyTitle;
         let question = this.state.surveyQuestion;
         let surveyOptions = this.state.surveyOptions;
+
+        if(!title || title.length === 0 )
+            return
 
         if(!question || question.length === 0 )
             return
@@ -612,6 +617,7 @@ class List extends Component {
             return
 
         let toWrite = {
+            title: title,
             question: question,
             options: surveyOptions,
             createdAt: new Date().toISOString(),
@@ -712,6 +718,12 @@ class List extends Component {
                 </p>
 
                 <h2 style={{textAlign: 'center'}}>New Survey</h2>
+
+                <input value={this.state.surveyTitle}
+                       style={{borderRadius: 5, borderWidth: 1,color: 'black', borderStyle: 'solid', borderColor: 'gray', width: '75%', padding: 6, height: 60, marginTop: 20}}
+                       onChange={(e) => this.setState({surveyTitle: e.target.value})}
+                       placeholder='Enter the title....'
+                       type='text'/>
 
                 <input value={this.state.surveyQuestion}
                        style={{borderRadius: 5, borderWidth: 1,color: 'black', borderStyle: 'solid', borderColor: 'gray', width: '75%', padding: 6, height: 60, marginTop: 20}}
@@ -834,7 +846,7 @@ class List extends Component {
                     <tbody>
                     <tr>
                         <th style={publishHStyle}>Published</th>
-                        <th style={questionHStyle}>Question</th>
+                        <th style={questionHStyle}>Title</th>
                         <th style={countHStyle}>Total Responses</th>
                         <th style={createdHStyle}>Created At</th>
                     </tr>
