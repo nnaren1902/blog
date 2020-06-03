@@ -15,7 +15,7 @@ const CATEGORIES = {
     hvt: 'History VS. Today',
     ge: 'General Election',
     p: 'Politics',
-    c: 'Why do we still see color?',
+    c: 'Equality Now',
     c19: 'COVID-19',
 }
 
