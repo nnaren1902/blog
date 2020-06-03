@@ -3,6 +3,7 @@ import database from '../services/database.js'
 import {storage} from '../services/database.js'
 import Modal from 'react-modal';
 import Loader from "react-loader-spinner";
+import { Bar } from 'react-chartjs-2';
 import styles from '../styles/List.module.css'
 
 let moment = require('moment');
@@ -629,6 +630,7 @@ class List extends Component {
 
         firestore.collection('surveys').add(toWrite)
             .then(docRef =>  {
+                toWrite.id = docRef.id;
                 surveys.unshift(toWrite);
                 this.setState({modalOpen: false, surveys: surveys, survey: false, surveyOptionsLength: 2, surveyOptions: ["", ""]})
                 window.alert("Survey created. Publish from the list now!");
@@ -750,6 +752,23 @@ class List extends Component {
 
     renderSurveyResults() {
         let {selectedSurvey} = this.state
+        let answers = selectedSurvey.answers || [];
+        let chartData = [];
+        let chartLabels = [];
+
+        let options = selectedSurvey.options;
+        for(let i=0; i<options.length; i++) {
+            chartLabels[i] = options[i];
+            chartData[i] = 0
+        }
+
+        let count;
+        for(let i=0; i<answers.length; i++) {
+            let answer = answers[i]; // answer is the index of the option
+            count = chartData[answer]
+            chartData[answer] = count + 1
+        }
+
         return (
             <div>
                 <p
@@ -763,6 +782,30 @@ class List extends Component {
                 <div>
                     <h3>{selectedSurvey.title}</h3>
                     <p style={{maxHeight: 140, overflow: 'scroll'}}>{selectedSurvey.question}</p>
+                </div>
+
+                <div style={{height: 300}}>
+                    <Bar
+                        data={{
+                            labels: chartLabels,
+                            datasets: [{
+                                label: '# of Votes',
+                                data: chartData,
+                            }]
+                        }}
+                        options={{
+                            maintainAspectRatio: false,
+                            scales: {
+                                yAxes: [{
+                                    ticks: {
+                                        beginAtZero: true
+                                    }
+                                }]
+                            }
+                        }}
+                        width={100}
+                        height={50}
+                    />
                 </div>
             </div>
         )
