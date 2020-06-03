@@ -346,6 +346,7 @@ class List extends Component {
             modalOpen: true,
             surveyResults: true,
             survey: true,
+            selectedSurvey: survey
         })
     }
 
@@ -748,9 +749,21 @@ class List extends Component {
     }
 
     renderSurveyResults() {
+        let {selectedSurvey} = this.state
         return (
             <div>
-                <p style={{color: 'black'}}>rstuls</p>
+                <p
+                    onClick={() => this.surveyClosePressed()}
+                    style={{position: 'absolute', right: 15, top: 5, cursor: 'pointer', fontSize: 26}}>
+                    X
+                </p>
+
+                <h2 style={{textAlign: 'center', color: 'red'}}>Survey Results</h2>
+
+                <div>
+                    <h3>{selectedSurvey.title}</h3>
+                    <p style={{maxHeight: 140, overflow: 'scroll'}}>{selectedSurvey.question}</p>
+                </div>
             </div>
         )
     }
